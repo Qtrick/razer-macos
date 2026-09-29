@@ -43,9 +43,11 @@ jobs:
       - name: Ad-hoc sign app bundles (Gatekeeper still requires right-click Open)
         run: |
           set -e
+          # Do NOT enable hardened runtime — it blocks CGEventTap / Ripple for
+          # unsigned community builds (yarn dev works because Electron is not HR).
           for app in dist/mac*/Razer\ macOS.app; do
             if [[ -d "$app" ]]; then
-              codesign -s - --deep --force "$app" || true
+              codesign -s - --deep --force --entitlements resources/entitlements.mac.plist "$app" || true
             fi
           done
           ls -lah dist/*.dmg dist/*.zip 2>/dev/null || ls -lah dist/

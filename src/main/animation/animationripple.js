@@ -1,4 +1,4 @@
-import { dialog, shell, systemPreferences } from 'electron';
+import { app, dialog, shell, systemPreferences } from 'electron';
 import { RazerDeviceAnimation } from './animation';
 import { buildKeyMapping } from './keymapping';
 
@@ -36,10 +36,18 @@ function maybeGuidePermissions() {
     trusted = false;
   }
 
-  // If Accessibility already looks granted, stay quiet. After an Input
-  // Monitoring-only reset the user must re-enable that toggle manually;
-  // starting iohook re-lists the app there.
-  if (trusted) {
+  // Yarn-dev and the packaged app are different binaries under TCC. Always
+  // remind once in release builds — Input Monitoring grants for Electron do
+  // not apply to /Applications/Razer macOS.app.
+  const packaged = (() => {
+    try {
+      return app.isPackaged;
+    } catch (e) {
+      return false;
+    }
+  })();
+
+  if (trusted && !packaged) {
     return;
   }
 
@@ -50,9 +58,10 @@ function maybeGuidePermissions() {
       defaultId: 0,
       cancelId: 2,
       title: 'Ripple keyboard access',
-      message: 'Ripple needs keyboard permissions.',
+      message: 'Ripple needs keyboard permissions for this app.',
       detail:
-        'Enable “Razer macOS” under System Settings → Privacy & Security → Accessibility and Input Monitoring, then fully quit and reopen the app.',
+        'Enable “Razer macOS” (not Electron) under System Settings → Privacy & Security → Input Monitoring and Accessibility.\n\n' +
+        'Then fully quit Razer macOS and open it again. Dev (yarn) and the release app each need their own toggle.',
     })
     .then((result) => {
       if (result.response === 0) {
