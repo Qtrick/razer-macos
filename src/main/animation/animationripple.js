@@ -19,34 +19,6 @@ export class RazerAnimationRipple extends RazerDeviceAnimation {
     this.onKeyDown = null;
   }
 
-  /**
-   * Ripple needs macOS Accessibility (and often Input Monitoring) so iohook
-   * can see key presses. Prompt the user if the process is not trusted yet.
-   */
-  ensureAccessibilityAccess() {
-    try {
-      const { systemPreferences, dialog } = require('electron');
-      const trusted = systemPreferences.isTrustedAccessibilityClient(false);
-      if (!trusted) {
-        dialog.showMessageBoxSync({
-          type: 'warning',
-          title: 'Permission required for Ripple',
-          message: 'Ripple needs Accessibility access to detect key presses.',
-          detail:
-            'Click OK to open the Accessibility prompt, then enable “Razer macOS” (or Electron). ' +
-            'Also enable it under Privacy & Security → Input Monitoring if asked. ' +
-            'Restart the app afterwards, then select Ripple again.',
-        });
-        systemPreferences.isTrustedAccessibilityClient(true);
-        return false;
-      }
-      return true;
-    } catch (e) {
-      console.error('Ripple accessibility check failed:', e);
-      return true; // still attempt to start
-    }
-  }
-
   paintFrame(matrix) {
     for (let i = 0; i < this.nRows; i++) {
       const row = [i, 0, this.nCols - 1, ...matrix[i].flat()];
@@ -111,10 +83,10 @@ export class RazerAnimationRipple extends RazerDeviceAnimation {
     this.keyEvents = [];
     this.paintFrame(this.createBackgroundMatrix());
 
-    // Still paint the background even if permissions are missing, so the user
-    // sees the dual-color base instead of a silent no-op.
-    const canListen = this.ensureAccessibilityAccess();
-
+    // Do not call systemPreferences.isTrustedAccessibilityClient(true) here.
+    // For unsigned/ad-hoc release builds that API often returns false even after
+    // the user granted access, and calling it re-opens the system permission
+    // dialog on every Ripple selection.
     try {
       this.ioHook = require('iohook');
       this.onKeyDown = (event) => {
@@ -125,15 +97,9 @@ export class RazerAnimationRipple extends RazerDeviceAnimation {
       };
       this.ioHook.on('keydown', this.onKeyDown);
       this.ioHook.start();
-      if (!canListen) {
-        console.warn(
-          'Ripple started without Accessibility trust — key events will not fire until permission is granted and the app is restarted.',
-        );
-      } else {
-        console.log(
-          `Ripple started (${this.nRows}x${this.nCols}, ${Object.keys(this.KEY_MAPPING).length} mapped keys)`,
-        );
-      }
+      console.log(
+        `Ripple started (${this.nRows}x${this.nCols}, ${Object.keys(this.KEY_MAPPING).length} mapped keys)`,
+      );
     } catch (e) {
       console.error('Failed to start iohook for Ripple:', e);
     }

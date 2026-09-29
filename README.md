@@ -23,7 +23,8 @@ Upstream project: [1kc/razer-macos](https://github.com/1kc/razer-macos/releases)
 1. Download the `.dmg` for your Mac from [Releases](https://github.com/Qtrick/razer-macos/releases) (`arm64` for Apple Silicon, `x64` for Intel).
 2. Open the DMG and drag **Razer macOS** to Applications.
 3. First launch: right-click the app → **Open** (macOS Gatekeeper may block unsigned community builds).
-4. For **Ripple**: grant **Accessibility** and **Input Monitoring** to Razer macOS in System Settings → Privacy & Security, then restart the app.
+4. For **Ripple**: grant **Accessibility** and **Input Monitoring** to Razer macOS in System Settings → Privacy & Security (manually — the app will not keep prompting). Then restart the app once.
+
 
 If you get a security warning when opening the app, go to System Settings → Privacy & Security and allow it.
 
