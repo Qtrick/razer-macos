@@ -46,11 +46,14 @@ constructor(device, featureConfiguration, speed) {
         this.device.setCustomFrame(new Uint8Array(row))
       }
       this.device.setModeCustom();
-    }, refreshRate);
+    }, refreshRate * 1000);
   }
 
   stop() {
-    clearTimeout(this.wheelEffectInterval);
+    if (this.wheelEffectInterval != null) {
+      clearInterval(this.wheelEffectInterval);
+      this.wheelEffectInterval = null;
+    }
   }
 
   destroy() {

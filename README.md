@@ -14,14 +14,21 @@
 
 ## Download
 
-[Latest release](https://github.com/1kc/razer-macos/releases)
+**This fork:** [Latest release](https://github.com/Qtrick/razer-macos/releases) (includes Huntsman Mini / 60% ripple fixes)
+
+Upstream project: [1kc/razer-macos](https://github.com/1kc/razer-macos/releases)
 
 ## Installation instructions
 
-Install by drag and drop to Applications.
-If you get a security warning when opening the app, you need to go to your Mac's "System Preferences", "Security and Privacy", "General" and click "Open" at the bottom to allow Razer macOS to run.
+1. Download the `.dmg` for your Mac from [Releases](https://github.com/Qtrick/razer-macos/releases) (`arm64` for Apple Silicon, `x64` for Intel).
+2. Open the DMG and drag **Razer macOS** to Applications.
+3. First launch: right-click the app → **Open** (macOS Gatekeeper may block unsigned community builds).
+4. For **Ripple**: grant **Accessibility** and **Input Monitoring** to Razer macOS in System Settings → Privacy & Security, then restart the app.
+
+If you get a security warning when opening the app, go to System Settings → Privacy & Security and allow it.
 
 Please see FAQ section below if color changes are not working, otherwise open a new issue.
+
 
 ## Device support
 
@@ -221,7 +228,12 @@ Ongoing new device support will be provided on a volunteer contribution basis, a
 
 ## Developer usage
 
-    git clone --recursive https://github.com/1kc/razer-macos.git
+    git clone --recursive https://github.com/Qtrick/razer-macos.git
+
+This project requires **Node.js 16** (Webpack 4 / Electron 11). With nvm:
+
+    nvm install 16
+    nvm use
 
 Ensure xcode command line tools are installed,
 
@@ -251,9 +263,11 @@ For building a distribution ready app and dmg:
 
     yarn dist
 
-Sign the universal package before moving to /Applications folder with ad-hoc signing:
+Sign the package before moving to /Applications folder with ad-hoc signing:
 
-    codesign -s - --deep --force ./dist/mac-universal/Razer\ macOS.app
+    codesign -s - --deep --force ./dist/mac*/Razer\ macOS.app
+
+Published builds are also produced automatically by GitHub Actions when you push a version tag (`v0.4.11`, etc.).
 
 ## Implementation
 

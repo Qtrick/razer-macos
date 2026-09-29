@@ -1,0 +1,72 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    runs-on: macos-13
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js 16
+        uses: actions/setup-node@v4
+        with:
+          node-version: '16'
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile || yarn install
+
+      - name: Rebuild native modules
+        run: yarn rebuild
+
+      - name: Build macOS DMG (unsigned / ad-hoc)
+        env:
+          # Skip Apple Developer signing/notarization for community builds
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          # electron-builder-notarize no-ops without Apple credentials
+          SKIP_NOTARIZATION: 'true'
+        run: |
+          yarn compile
+          yarn electron-builder --mac dmg --x64 --arm64
+
+      - name: Ad-hoc sign app bundles (Gatekeeper still requires right-click Open)
+        run: |
+          set -e
+          for app in dist/mac*/Razer\ macOS.app; do
+            if [[ -d "$app" ]]; then
+              codesign -s - --deep --force "$app" || true
+            fi
+          done
+          ls -lah dist/*.dmg dist/*.zip 2>/dev/null || ls -lah dist/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: razer-macos-dmg
+          path: |
+            dist/*.dmg
+            dist/*.zip
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.dmg
+            dist/*.zip
+          generate_release_notes: true
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
