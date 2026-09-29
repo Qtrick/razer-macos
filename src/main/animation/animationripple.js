@@ -1,5 +1,68 @@
+import { dialog, shell, systemPreferences } from 'electron';
 import { RazerDeviceAnimation } from './animation';
 import { buildKeyMapping } from './keymapping';
+
+let permissionHintShownThisSession = false;
+
+function openMacPrivacyPane(pane) {
+  const urls = [
+    // macOS 13+ System Settings
+    `x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?${pane}`,
+    // Older System Preferences
+    `x-apple.systempreferences:com.apple.preference.security?${pane}`,
+  ];
+  for (const url of urls) {
+    try {
+      shell.openExternal(url);
+      return;
+    } catch (e) {
+      // try next URL form
+    }
+  }
+}
+
+function maybeGuidePermissions() {
+  if (permissionHintShownThisSession) {
+    return;
+  }
+  permissionHintShownThisSession = true;
+
+  // Never call isTrustedAccessibilityClient(true) — that re-opens the system
+  // dialog every time for ad-hoc signed builds.
+  let trusted = true;
+  try {
+    trusted = systemPreferences.isTrustedAccessibilityClient(false);
+  } catch (e) {
+    trusted = false;
+  }
+
+  // If Accessibility already looks granted, stay quiet. After an Input
+  // Monitoring-only reset the user must re-enable that toggle manually;
+  // starting iohook re-lists the app there.
+  if (trusted) {
+    return;
+  }
+
+  dialog
+    .showMessageBox({
+      type: 'info',
+      buttons: ['Open Input Monitoring', 'Open Accessibility', 'OK'],
+      defaultId: 0,
+      cancelId: 2,
+      title: 'Ripple keyboard access',
+      message: 'Ripple needs keyboard permissions.',
+      detail:
+        'Enable “Razer macOS” under System Settings → Privacy & Security → Accessibility and Input Monitoring, then fully quit and reopen the app.',
+    })
+    .then((result) => {
+      if (result.response === 0) {
+        openMacPrivacyPane('Privacy_ListenEvent');
+      } else if (result.response === 1) {
+        openMacPrivacyPane('Privacy_Accessibility');
+      }
+    })
+    .catch(() => {});
+}
 
 export class RazerAnimationRipple extends RazerDeviceAnimation {
   constructor(device, featureConfiguration, color, backgroundColor = [0, 0, 0]) {
@@ -83,10 +146,8 @@ export class RazerAnimationRipple extends RazerDeviceAnimation {
     this.keyEvents = [];
     this.paintFrame(this.createBackgroundMatrix());
 
-    // Do not call systemPreferences.isTrustedAccessibilityClient(true) here.
-    // For unsigned/ad-hoc release builds that API often returns false even after
-    // the user granted access, and calling it re-opens the system permission
-    // dialog on every Ripple selection.
+    maybeGuidePermissions();
+
     try {
       this.ioHook = require('iohook');
       this.onKeyDown = (event) => {
@@ -96,6 +157,8 @@ export class RazerAnimationRipple extends RazerDeviceAnimation {
         }
       };
       this.ioHook.on('keydown', this.onKeyDown);
+      // Starting the hook creates the CGEventTap, which re-registers the app
+      // under Input Monitoring after a TCC reset.
       this.ioHook.start();
       console.log(
         `Ripple started (${this.nRows}x${this.nCols}, ${Object.keys(this.KEY_MAPPING).length} mapped keys)`,

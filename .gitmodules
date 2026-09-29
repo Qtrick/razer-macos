@@ -3,4 +3,4 @@
 	url = git@github.com:1kc/librazermacos.git
 [submodule "iohook"]
 	path = iohook
-	url = https://github.com/overcurrent/iohook
+	url = https://github.com/Qtrick/iohook.git
